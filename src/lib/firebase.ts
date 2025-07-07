@@ -23,6 +23,7 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app);
 export const storage = getStorage(app);
 
+/*
 if (process.env.NODE_ENV === 'development') {
   console.log("Connecting to local Firebase emulators...");
   
@@ -36,3 +37,4 @@ if (process.env.NODE_ENV === 'development') {
     console.error('Error connecting to Firebase emulators:', error);
   }
 }
+*/
