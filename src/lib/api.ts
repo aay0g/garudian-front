@@ -35,14 +35,34 @@ export const signOut = () => {
 
 // Email Link Authentication
 export const sendEmailSignInLink = async (email: string) => {
-  const actionCodeSettings = {
-    url: `${window.location.origin}/login/verify`,
-    handleCodeInApp: true,
-  };
-  
-  await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-  // Save email to localStorage for verification
-  window.localStorage.setItem('emailForSignIn', email);
+  try {
+    const actionCodeSettings = {
+      url: `${window.location.origin}/login/verify`,
+      handleCodeInApp: true,
+      // Add iOS and Android package names if you have mobile apps
+      // iOS: { bundleId: 'com.example.ios' },
+      // android: { packageName: 'com.example.android' },
+      dynamicLinkDomain: undefined // Set this if you're using Firebase Dynamic Links
+    };
+    
+    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+    // Save email to localStorage for verification
+    window.localStorage.setItem('emailForSignIn', email);
+  } catch (error: any) {
+    console.error('Send email sign-in link error:', error);
+    // Provide more specific error messages
+    if (error.code === 'auth/invalid-email') {
+      throw new Error('Invalid email address');
+    } else if (error.code === 'auth/user-not-found') {
+      throw new Error('No account found with this email');
+    } else if (error.code === 'auth/too-many-requests') {
+      throw new Error('Too many requests. Please try again later');
+    } else if (error.code === 'auth/unauthorized-domain') {
+      throw new Error('This domain is not authorized for email links');
+    } else {
+      throw new Error('Failed to send email link. Please try again');
+    }
+  }
 };
 
 export const verifyEmailSignInLink = async (email: string, emailLink: string) => {
@@ -55,12 +75,28 @@ export const checkIsSignInWithEmailLink = (url: string) => {
 
 // Password Reset
 export const sendPasswordReset = async (email: string) => {
-  const actionCodeSettings = {
-    url: `${window.location.origin}/login`,
-    handleCodeInApp: false,
-  };
-  
-  return sendPasswordResetEmail(auth, email, actionCodeSettings);
+  try {
+    const actionCodeSettings = {
+      url: `${window.location.origin}/login`,
+      handleCodeInApp: false,
+    };
+    
+    await sendPasswordResetEmail(auth, email, actionCodeSettings);
+  } catch (error: any) {
+    console.error('Send password reset error:', error);
+    // Provide more specific error messages
+    if (error.code === 'auth/invalid-email') {
+      throw new Error('Invalid email address');
+    } else if (error.code === 'auth/user-not-found') {
+      throw new Error('No account found with this email address');
+    } else if (error.code === 'auth/too-many-requests') {
+      throw new Error('Too many requests. Please try again later');
+    } else if (error.code === 'auth/unauthorized-domain') {
+      throw new Error('This domain is not authorized for password reset');
+    } else {
+      throw new Error('Failed to send password reset email. Please try again');
+    }
+  }
 };
 
 // --- User Management ---
