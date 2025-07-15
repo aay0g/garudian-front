@@ -23,6 +23,15 @@ export default function LoginPage() {
   const { login, sendEmailLink, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
+  // Handle hydration
+  useEffect(() => {
+    // Remove any server-side rendered overlay containers
+    const overlayContainers = document.querySelectorAll('[data-overlay-container]');
+    overlayContainers.forEach(container => {
+      container.removeAttribute('data-overlay-container');
+    });
+  }, []);
+
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
