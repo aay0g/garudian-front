@@ -52,7 +52,7 @@ export default function SettingsPage() {
         phoneNumber: profileForm.phone,
         department: profileForm.department,
       };
-      await handleUpdateProfile(profileData);
+      await handleUpdateProfile(user.id, profileData);
       await refreshUser();
       toast.success("Profile updated successfully!");
     } catch (error) {
