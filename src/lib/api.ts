@@ -21,6 +21,9 @@ import type {
 } from '../types/case';
 import type { UserProfile, UserRole, NewUserData, AssignableUser, ProfileUpdateData } from '../types/user';
 
+// Re-export ProfileUpdateData type
+export type { ProfileUpdateData };
+
 // --- Authentication ---
 export const signIn = (email: string, password: string) => {
   return signInWithEmailAndPassword(auth, email, password);
