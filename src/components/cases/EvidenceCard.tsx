@@ -26,9 +26,7 @@ export const EvidenceCard = ({ evidence, onDelete }: EvidenceCardProps) => {
             <CardTitle className="flex items-center gap-2">
               {evidenceTypeIcon} {evidence.title}
             </CardTitle>
-            <CardDescription>
-              {evidence.description}
-            </CardDescription>
+            <CardDescription>{evidence.description}</CardDescription>
           </div>
           <div className="flex flex-col items-end">
             <span className="text-sm text-muted-foreground">
@@ -43,7 +41,12 @@ export const EvidenceCard = ({ evidence, onDelete }: EvidenceCardProps) => {
       <CardContent>
         {evidence.fileUrl && (
           <div className="mb-4">
-            <a href={evidence.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            <a 
+              href={evidence.fileUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-primary hover:underline"
+            >
               View File
             </a>
           </div>
@@ -77,12 +80,6 @@ export const EvidenceCard = ({ evidence, onDelete }: EvidenceCardProps) => {
             </AlertDialogContent>
           </AlertDialog>
         </div>
-            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-          >
-            <LinkIcon className="h-4 w-4" />
-            View {evidence.fileName || 'Attachment'}
-          </a>
-        )}
       </CardContent>
     </Card>
   );
