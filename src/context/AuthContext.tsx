@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getUserProfile, signIn, signOut } from '@/lib/api';
+import { getUserProfile, signIn, signOut, sendEmailSignInLink, verifyEmailSignInLink, checkIsSignInWithEmailLink, sendPasswordReset } from '@/lib/api';
 import { UserProfile } from '@/types/user';
 import { useRouter } from 'next/navigation';
 
@@ -14,6 +14,10 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isLoading: boolean;
   refreshUser: () => Promise<void>;
+  sendEmailLink: (email: string) => Promise<void>;
+  verifyEmailLink: (email: string, emailLink: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  isEmailLinkSignIn: (url: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -49,8 +53,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      await signIn(email, password);
-      // onAuthStateChanged will handle the rest
+      const userCredential = await signIn(email, password);
+      
+      // Wait for the user profile to be loaded
+      await fetchAndSetUser(userCredential.user);
+      
+      // Record login time in the background
+      try {
+        const { handleRecordLogin } = await import('@/lib/api');
+        handleRecordLogin(userCredential.user.uid).catch(console.error);
+      } catch (recordError) {
+        console.warn('Could not record login time:', recordError);
+      }
+      
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -73,10 +88,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const sendEmailLink = async (email: string) => {
+    try {
+      await sendEmailSignInLink(email);
+    } catch (error) {
+      console.error('Send email link error:', error);
+      throw error;
+    }
+  };
+
+  const verifyEmailLink = async (email: string, emailLink: string) => {
+    try {
+      const userCredential = await verifyEmailSignInLink(email, emailLink);
+      await fetchAndSetUser(userCredential.user);
+      
+      // Record login time in the background
+      try {
+        const { handleRecordLogin } = await import('@/lib/api');
+        handleRecordLogin(userCredential.user.uid).catch(console.error);
+      } catch (recordError) {
+        console.warn('Could not record login time:', recordError);
+      }
+    } catch (error) {
+      console.error('Verify email link error:', error);
+      throw error;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordReset(email);
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
+    }
+  };
+
+  const isEmailLinkSignIn = (url: string) => {
+    return checkIsSignInWithEmailLink(url);
+  };
+
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, isLoading, refreshUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isAuthenticated, 
+      login, 
+      logout, 
+      isLoading, 
+      refreshUser,
+      sendEmailLink,
+      verifyEmailLink,
+      resetPassword,
+      isEmailLinkSignIn
+    }}>
       {children}
     </AuthContext.Provider>
   );

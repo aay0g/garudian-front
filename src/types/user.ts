@@ -29,3 +29,10 @@ export interface AssignableUser {
   username: string;
   role: UserRole;
 }
+
+export interface ProfileUpdateData {
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  department?: string;
+}

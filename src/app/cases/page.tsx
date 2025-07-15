@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { handleCreateCase, fetchAllCases, handleGetAssignableUsers, handleUpdateCaseStatus, searchCases } from '@/lib/api';
-import { Case, NewCaseData, CaseStatus } from '@/types/case';
+import { handleCreateCase, fetchAllCases, handleGetAssignableUsers, updateCase } from '@/lib/api';
+import { Case, NewCaseData, CaseStatus, Victim } from '@/types/case';
 import { AssignableUser } from '@/types/user';
 import { AssignCaseDialog } from '@/components/dialogs/AssignCaseDialog';
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -23,8 +23,7 @@ const INITIAL_NEW_CASE_STATE: NewCaseData = {
   title: "",
   description: "",
   priority: "medium",
-  caseType: "",
-  source: "dashboard",
+  caseType: "other",
   victim: {
     name: '',
     email: '',
@@ -44,9 +43,7 @@ export default function CasesPage() {
   const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
   const [allCases, setAllCases] = useState<Case[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Partial<Case>[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+
   const [newCaseForm, setNewCaseForm] = useState<NewCaseData>(INITIAL_NEW_CASE_STATE);
 
   const fetchCases = async () => {
@@ -68,33 +65,11 @@ export default function CasesPage() {
     }
   }, [user]);
 
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      if (searchQuery) {
-        setIsSearching(true);
-        searchCases(searchQuery).then(results => {
-          setSearchResults(results);
-          setIsSearching(false);
-        }).catch(err => {
-            toast.error("Search failed.");
-            console.error(err);
-            setIsSearching(false);
-        });
-      } else {
-        setSearchResults([]);
-      }
-    }, 300); // 300ms debounce
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [searchQuery]);
-
   const filteredCases = useMemo(() => {
     return allCases.filter((c) => c.status === activeTab);
   }, [allCases, activeTab]);
 
-  const casesToDisplay = searchQuery ? searchResults : filteredCases;
+  const casesToDisplay = filteredCases;
 
   const handleFormChange = (field: keyof NewCaseData, value: any) => {
     let processedValue = value;
@@ -106,11 +81,11 @@ export default function CasesPage() {
     setNewCaseForm((prev) => ({ ...prev, [field]: processedValue }));
   };
 
-  const handleVictimInfoChange = (field: keyof NewCaseData['victim'], value: string) => {
+  const handleVictimInfoChange = (field: keyof Victim, value: string) => {
     setNewCaseForm((prev) => ({
       ...prev,
       victim: {
-        ...prev.victim,
+        ...(prev.victim || { name: '', email: '' }), // Ensure victim is an object
         [field]: value,
       },
     }));
@@ -121,14 +96,18 @@ export default function CasesPage() {
       toast.error("You must be logged in to create a case.");
       return;
     }
-    if (!newCaseForm.title || !newCaseForm.caseType || !newCaseForm.victim.name) {
-      toast.error("Please fill in all required fields: Title, Case Type, and Victim Name.");
+    if (!newCaseForm.title || !newCaseForm.description || !newCaseForm.victim || !newCaseForm.victim.name) {
+      toast.error("Please fill in all required fields: Title, Description, and Victim Name.");
       return;
     }
 
     try {
-      const result = await handleCreateCase(newCaseForm);
-      toast.success(`Case created successfully! Case Number: ${result.caseNumber}`);
+      if (!user?.id) {
+        toast.error("User ID not found, cannot create case.");
+        return;
+      }
+      const { caseId, caseNumber } = await handleCreateCase(newCaseForm, user.id);
+      toast.success(`Case created successfully! Case Number: ${caseNumber}`);
       
       await fetchCases();
       
@@ -156,124 +135,173 @@ export default function CasesPage() {
   };
 
   const handleUpdateStatus = async (caseId: string, status: 'closed' | 'archived') => {
-    if (!user) return;
-    if (!['Super Admin', 'Senior Investigator'].includes(user.role)) {
-      toast.error(`You are not authorized to ${status} cases.`);
-      return;
-    }
     try {
-      await handleUpdateCaseStatus(caseId, status);
-      toast.success(`Case successfully ${status}.`);
-      fetchCases();
+      await updateCase(caseId, { status });
+      toast.success(`Case status updated to ${status}.`);
+      fetchCases(); // Refresh the list
     } catch (error) {
-      toast.error(`Failed to ${status} the case.`);
+      toast.error("Failed to update case status.");
+      console.error(error);
     }
   };
 
   return (
     <DashboardLayout>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Case Management</h1>
-        <Input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by case number"
-          className="w-64"
-        />
-        {user && (
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>Create New Case</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Create New Case</DialogTitle>
-                <DialogDescription>
-                  Fill in the details below to create a new case.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="title" className="text-right">Title</Label>
-                  <Input id="title" value={newCaseForm.title} onChange={(e) => handleFormChange('title', e.target.value)} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="description" className="text-right">Description</Label>
-                  <Textarea id="description" value={newCaseForm.description} onChange={(e) => handleFormChange('description', e.target.value)} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="caseType" className="text-right">Case Type</Label>
-                  <Input id="caseType" value={newCaseForm.caseType} onChange={(e) => handleFormChange('caseType', e.target.value)} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="priority" className="text-right">Priority</Label>
-                  <Select onValueChange={(value) => handleFormChange('priority', value as "low" | "medium" | "high")} defaultValue={newCaseForm.priority}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="source" className="text-right">Source</Label>
-                  <Select onValueChange={(value) => handleFormChange('source', value)} defaultValue={newCaseForm.source}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dashboard">Dashboard</SelectItem>
-                      <SelectItem value="bot">Bot</SelectItem>
-                      <SelectItem value="website">Website</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amountInvolved" className="text-right">Amount Involved</Label>
-                  <Input id="amountInvolved" type="number" value={newCaseForm.amountInvolved} onChange={(e) => handleFormChange('amountInvolved', e.target.value)} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="currency" className="text-right">Currency</Label>
-                  <Select onValueChange={(value) => handleFormChange('currency', value)} defaultValue={newCaseForm.currency}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="INR">INR</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="tags" className="text-right">Tags</Label>
-                  <Input id="tags" value={(newCaseForm.tags || []).join(', ')} onChange={(e) => handleFormChange('tags', e.target.value)} className="col-span-3" placeholder="e.g. phishing, scam, social-engineering" />
-                </div>
-                <h4 className="font-semibold mt-4 col-span-4">Victim Information</h4>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="victimName" className="text-right">Name</Label>
-                  <Input id="victimName" value={newCaseForm.victim.name} onChange={(e) => handleVictimInfoChange('name', e.target.value)} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="victimEmail" className="text-right">Email</Label>
-                  <Input id="victimEmail" type="email" value={newCaseForm.victim.email} onChange={(e) => handleVictimInfoChange('email', e.target.value)} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="victimPhone" className="text-right">Phone</Label>
-                  <Input id="victimPhone" value={newCaseForm.victim.phone} onChange={(e) => handleVictimInfoChange('phone', e.target.value)} className="col-span-3" />
-                </div>
+        <CardTitle>Case Management</CardTitle>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setNewCaseForm(INITIAL_NEW_CASE_STATE)}>Create New Case</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create New Case</DialogTitle>
+              <DialogDescription>
+                Fill in the details below to create a new cybersecurity case.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="title" className="text-right">
+                  Title *
+                </Label>
+                <Input
+                  id="title"
+                  value={newCaseForm.title}
+                  onChange={(e) => handleFormChange('title', e.target.value)}
+                  className="col-span-3"
+                  placeholder="Enter case title"
+                />
               </div>
-              <DialogFooter>
-                <Button type="submit" onClick={handleSubmitNewCase}>Create Case</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="description" className="text-right">
+                  Description *
+                </Label>
+                <Textarea
+                  id="description"
+                  value={newCaseForm.description}
+                  onChange={(e) => handleFormChange('description', e.target.value)}
+                  className="col-span-3"
+                  placeholder="Enter case description"
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="priority" className="text-right">
+                  Priority
+                </Label>
+                <Select value={newCaseForm.priority} onValueChange={(value) => handleFormChange('priority', value)}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="caseType" className="text-right">
+                  Case Type
+                </Label>
+                <Select value={newCaseForm.caseType} onValueChange={(value) => handleFormChange('caseType', value)}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select case type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="phishing">Phishing</SelectItem>
+                    <SelectItem value="romance-scam">Romance Scam</SelectItem>
+                    <SelectItem value="investment-fraud">Investment Fraud</SelectItem>
+                    <SelectItem value="identity-theft">Identity Theft</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="victimName" className="text-right">
+                  Victim Name *
+                </Label>
+                <Input
+                  id="victimName"
+                  value={newCaseForm.victim?.name || ''}
+                  onChange={(e) => handleVictimInfoChange('name', e.target.value)}
+                  className="col-span-3"
+                  placeholder="Enter victim name"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="victimEmail" className="text-right">
+                  Victim Email
+                </Label>
+                <Input
+                  id="victimEmail"
+                  type="email"
+                  value={newCaseForm.victim?.email || ''}
+                  onChange={(e) => handleVictimInfoChange('email', e.target.value)}
+                  className="col-span-3"
+                  placeholder="Enter victim email"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="victimPhone" className="text-right">
+                  Victim Phone
+                </Label>
+                <Input
+                  id="victimPhone"
+                  value={newCaseForm.victim?.phone || ''}
+                  onChange={(e) => handleVictimInfoChange('phone', e.target.value)}
+                  className="col-span-3"
+                  placeholder="Enter victim phone"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="amountInvolved" className="text-right">
+                  Amount Involved
+                </Label>
+                <Input
+                  id="amountInvolved"
+                  type="number"
+                  value={newCaseForm.amountInvolved || ''}
+                  onChange={(e) => handleFormChange('amountInvolved', e.target.value)}
+                  className="col-span-2"
+                  placeholder="0"
+                />
+                <Select value={newCaseForm.currency || 'USD'} onValueChange={(value) => handleFormChange('currency', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="INR">INR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="tags" className="text-right">
+                  Tags
+                </Label>
+                <Input
+                  id="tags"
+                  value={newCaseForm.tags?.join(', ') || ''}
+                  onChange={(e) => handleFormChange('tags', e.target.value)}
+                  className="col-span-3"
+                  placeholder="Enter tags separated by commas"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleSubmitNewCase}>
+                Create Case
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -308,21 +336,16 @@ export default function CasesPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="text-center">Loading...</TableCell>
                 </TableRow>
-              ) : isSearching ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center">Searching...</TableCell>
-                </TableRow>
               ) : casesToDisplay.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {searchQuery ? `No results found for "${searchQuery}"` : `No ${activeTab} cases found`}
+                    {`No ${activeTab} cases found`}
                   </TableCell>
                 </TableRow>
               ) : (
                 casesToDisplay.map((c) => {
                   if (!c.id) return null; // Don't render if case has no ID
 
-                  const isSearchResult = searchQuery.length > 0;
                   const date = c.dateOpened || c.createdAt;
 
                   return (
@@ -335,10 +358,10 @@ export default function CasesPage() {
                       <TableCell>{c.title ?? 'N/A'}</TableCell>
                       <TableCell>{c.caseNumber ?? 'N/A'}</TableCell>
                       <TableCell>{c.caseType ?? 'N/A'}</TableCell>
-                      <TableCell>{c.assignedTo?.username ?? 'Unassigned'}</TableCell>
-                      <TableCell>{date ? new Date(date).toLocaleDateString() : 'N/A'}</TableCell>
+                      <TableCell>{c.assignedTo?.path ?? 'Unassigned'}</TableCell>
+                      <TableCell>{date ? date.toDate().toLocaleDateString() : 'N/A'}</TableCell>
                       <TableCell className="space-x-2">
-                        {!isSearchResult && user && ['Super Admin', 'Senior Investigator'].includes(user.role) && (
+                        {user && ['Super Admin', 'Senior Investigator'].includes(user.role) && (
                           <>
                             {(c as Case).status === 'unverified' && (
                               <Button variant="outline" size="sm" onClick={() => handleOpenAssignDialog(c as Case)}>Assign</Button>

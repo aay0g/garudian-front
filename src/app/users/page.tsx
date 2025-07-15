@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { getAllUsers } from '@/lib/api';
 import { UserProfile } from '@/types/user';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { AddUserDialog } from '@/components/dialogs/AddUserDialog';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 // This is a presentational component for displaying the list of users
@@ -82,21 +83,34 @@ function UserManagementContainer() {
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
 
   const fetchUsers = async () => {
-    if (user?.role !== 'Super Admin') return;
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    
+    if (user.role !== 'Super Admin') {
+      setError('Access denied. Only Super Admins can view users.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
+      setError(null); // Clear previous errors
       const result = await getAllUsers();
       setUsers(result || []);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch users.');
+      console.error('Error in fetchUsers:', err);
+      setError(err.message || 'Failed to fetch users. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    if (user !== null) { // Only run when user is loaded (not null)
+      fetchUsers();
+    }
   }, [user]);
 
   if (user?.role !== 'Super Admin') {
@@ -130,7 +144,9 @@ function UserManagementContainer() {
 export default function UsersPage() {
   return (
     <DashboardLayout>
-      <UserManagementContainer />
+      <ErrorBoundary>
+        <UserManagementContainer />
+      </ErrorBoundary>
     </DashboardLayout>
   );
 }

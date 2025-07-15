@@ -1,0 +1,63 @@
+// Firestore Security Rules for Guardian Case Management System
+// Copy these rules to Firebase Console > Firestore Database > Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is Super Admin
+    function isSuperAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Super Admin';
+    }
+    
+    // Allow authenticated users to read/write their own user document
+    // Allow Super Admins to create/update any user document
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+                      (request.auth.uid == userId || isSuperAdmin());
+      allow create: if request.auth != null && isSuperAdmin();
+    }
+    
+    // Allow authenticated users to read/write cases
+    match /cases/{caseId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write case evidence
+    match /cases/{caseId}/evidence/{evidenceId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write case timeline events
+    match /cases/{caseId}/timeline/{timelineId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write case notes
+    match /cases/{caseId}/notes/{noteId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write victims
+    match /victims/{victimId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write alerts
+    match /alerts/{alertId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow read access to test documents for connection testing
+    match /test/{document=**} {
+      allow read: if request.auth != null;
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

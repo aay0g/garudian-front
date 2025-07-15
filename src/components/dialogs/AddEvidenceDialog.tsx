@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { addEvidenceToCase } from '@/lib/api';
 import { NewEvidenceData } from '@/types/case';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Timestamp } from 'firebase/firestore';
+
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -48,30 +49,24 @@ export const AddEvidenceDialog = ({ caseId, isOpen, onOpenChange, onEvidenceAdde
     const toastId = toast.loading('Uploading evidence file...');
 
     try {
-      // 1. Upload file to Firebase Storage
-      // The path `evidence/{caseId}/{fileName}` is enforced by backend security rules.
-      const storagePath = `evidence/${caseId}/${Date.now()}-${file.name}`;
-      const storageRef = ref(storage, storagePath);
-
-      // The security rules will automatically validate the upload based on the user's auth state.
-      const uploadResult = await uploadBytes(storageRef, file);
-      const fileUrl = await getDownloadURL(uploadResult.ref);
-
-      toast.loading('File uploaded. Adding evidence record...', { id: toastId });
-
-      // 2. Create evidence record in Firestore via backend function
-      const evidenceData: NewEvidenceData = {
+      console.log('Starting evidence upload:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
         caseId,
+        userId: user.uid
+      });
+
+      // Create evidence data (without file URL - the service will handle file upload)
+      const evidenceData: Omit<NewEvidenceData, 'caseId' | 'fileUrl' | 'fileName'> = {
         title: formData.title,
         description: formData.description,
         evidenceType: 'file',
-        fileName: file.name,
-        fileUrl,
-        fileType: file.type,
-        evidenceDate: new Date().toISOString(),
+        evidenceDate: Timestamp.now(), // Use current timestamp
       };
 
-      await addEvidenceToCase(evidenceData);
+      // Call the API with correct signature: (caseId, evidenceData, file, addedBy)
+      await addEvidenceToCase(caseId, evidenceData, file, user.uid);
 
       toast.success('Evidence added successfully!', { id: toastId });
       onEvidenceAdded(); // Refresh the evidence list
@@ -90,9 +85,12 @@ export const AddEvidenceDialog = ({ caseId, isOpen, onOpenChange, onEvidenceAdde
     onOpenChange(false);
   };
 
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent onInteractOutside={(e) => e.preventDefault()}>
+      <ErrorBoundary>
+        <DialogContent onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New Evidence</DialogTitle>
         </DialogHeader>
@@ -129,7 +127,8 @@ export const AddEvidenceDialog = ({ caseId, isOpen, onOpenChange, onEvidenceAdde
             Add Evidence
           </Button>
         </DialogFooter>
-      </DialogContent>
+        </DialogContent>
+      </ErrorBoundary>
     </Dialog>
   );
 };

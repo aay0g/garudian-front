@@ -10,7 +10,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { handleAssignCase } from '@/lib/api';
+import { updateCase } from '@/lib/api';
+import { doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { AssignableUser } from '@/types/user';
 import { toast } from 'sonner';
 
@@ -33,7 +35,9 @@ export function AssignCaseDialog({ isOpen, onOpenChange, caseId, assignableUsers
     }
     setIsLoading(true);
     try {
-      await handleAssignCase(caseId, selectedAssignee);
+            await updateCase(caseId, { 
+        assignedTo: doc(db, 'users', selectedAssignee)
+      });
       onCaseAssigned();
       onOpenChange(false);
     } catch (error) {

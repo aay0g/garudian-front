@@ -1,104 +1,130 @@
-export type CaseStatus = "unverified" | "active" | "closed" | "archived";
+import { Timestamp, DocumentReference } from 'firebase/firestore';
 
-// The structure for a new case to be sent to the backend
-export interface NewCaseData {
+// --- Enums from Schema ---
+export type CaseStatus = 'unverified' | 'active' | 'closed' | 'archived';
+export type CasePriority = 'low' | 'medium' | 'high';
+export type CaseType = 'phishing' | 'romance-scam' | 'investment-fraud' | 'identity-theft' | 'other';
+export type NoteType = 'investigation' | 'communication' | 'internal' | 'public';
+export type TimelineEventType = 'incident' | 'investigation' | 'communication' | 'resolution';
+export type EvidenceType = 'file' | 'url' | 'text';
+
+
+// --- Victim Interface ---
+export interface Victim {
+  name: string;
+  email: string;
+  phone?: string;
+  address?: string;
+}
+
+// --- Main Case Interface ---
+export interface Case {
+  id: string;
+  caseNumber: string; // e.g., CAS-001
   title: string;
   description: string;
-  priority: 'high' | 'medium' | 'low';
-  caseType: string;
-  source?: 'dashboard' | 'bot' | 'website';
-  victim: {
-    name: string;
-    email: string;
-    phone?: string; // Optional
-  };
+  status: CaseStatus;
+  priority: CasePriority;
+  caseType: CaseType;
   amountInvolved?: number;
   currency?: string;
+  dateOpened: Timestamp;
+  dateClosed?: Timestamp;
+  assignedTo?: DocumentReference; // Ref to User
+  createdBy: DocumentReference; // Ref to User
+  victim?: Victim;
   tags?: string[];
   metadata?: Record<string, any>;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-// The structure of a case object returned from the backend
-export interface NewTimelineEvent {
+// --- Subcollection Interfaces ---
+
+export interface Note {
+  id: string;
+  content: string;
+  noteType: NoteType;
+  addedBy: DocumentReference; // Ref to User
+  isPrivate: boolean;
+  attachments?: string[]; // Array of URLs
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface TimelineEvent {
+  id:string;
   title: string;
   description: string;
-  eventType: 'incident' | 'investigation' | 'communication' | 'resolution';
-  eventDate: string;
+  eventType: TimelineEventType;
+  eventDate: Timestamp;
+  addedBy: DocumentReference; // Ref to User
   isPublic: boolean;
-  attachments?: string[];
+  attachments?: string[]; // Array of URLs
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-export interface TimelineEvent extends NewTimelineEvent {
-  id: string;
-  createdAt: string;
-  addedBy: {
+export interface Evidence {
     id: string;
-    username: string;
-  };
+    title: string;
+    description: string;
+    evidenceType: EvidenceType;
+    fileName?: string;
+    fileUrl?: string; // URL to file in Firebase Storage
+    textContent?: string;
+    addedBy: DocumentReference; // Ref to User
+    evidenceDate: Timestamp;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
 }
 
-export interface NewNote {
+
+// --- Data Transfer Objects (for creating new entities) ---
+
+export interface NewCaseData {
+  title: string;
+  description:string;
+  priority: CasePriority;
+  caseType: CaseType;
+  amountInvolved?: number;
+  currency?: string;
+  victim?: Victim;
+  tags?: string[];
+}
+
+export interface NewNoteData {
   content: string;
-  noteType: 'investigation' | 'communication' | 'internal' | 'public';
+  noteType: NoteType;
   isPrivate: boolean;
   attachments?: string[];
 }
 
-export interface Note extends NewNote {
-  id: string;
-  createdAt: string;
-  addedBy: {
-    id: string;
-    username: string;
-  };
+export interface NewTimelineEventData {
+  title: string;
+  description: string;
+  eventType: TimelineEventType;
+  eventDate: Timestamp;
+  isPublic: boolean;
+  attachments?: string[];
 }
 
-// The structure for new evidence to be sent to the backend
 export interface NewEvidenceData {
-  caseId: string;
-  title: string;
-  description: string;
-  evidenceType: 'file' | 'url' | 'text';
-  fileName: string;
-  fileUrl: string;
-  fileType: string;
-  evidenceDate: string; // ISO string
+    title: string;
+    description: string;
+    evidenceType: EvidenceType;
+    fileName?: string;
+    fileUrl?: string;
+    textContent?: string;
+    evidenceDate: Timestamp;
 }
 
-export interface CaseEvidence {
-  id: string;
-  title: string;
-  description: string;
-  evidenceType: 'file' | 'url' | 'text';
-  fileName?: string;
-  fileUrl?: string;
-  fileType?: string;
-  evidenceDate: string; // ISO string
-  createdAt: string; // ISO string
-  addedBy: {
-    id: string;
-    username: string;
-  };
-}
 
-export interface Case {
-  id: string; // Firestore document ID
-  caseNumber: string;
-  title: string;
-  description: string;
-  status: CaseStatus;
-  priority: "high" | "medium" | "low";
-  caseType: string;
-  amountInvolved?: number;
-  currency?: string;
-  dateOpened: string; // ISO date string
-  dateClosed?: string; // ISO date string
-  assignedTo: { id: string, username: string } | null;
-  createdBy: { id: string, username: string };
-  victim: { id: string, name: string, email: string, phone?: string };
-  tags?: string[];
-  metadata?: Record<string, any>;
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
-  evidence?: CaseEvidence[];
+export interface CaseUpdateData {
+  title?: string;
+  description?: string;
+  status?: CaseStatus;
+  priority?: CasePriority;
+  caseType?: CaseType;
+  assignedTo?: DocumentReference | null;
 }

@@ -1,9 +1,9 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
-import { getStorage, connectStorageEmulator } from "firebase/storage";
+import { getAuth, } from 'firebase/auth';
+import { getFirestore, } from 'firebase/firestore';
+import { getFunctions, } from 'firebase/functions';
+import { getStorage, } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -23,18 +23,4 @@ export const db = getFirestore(app);
 export const functions = getFunctions(app);
 export const storage = getStorage(app);
 
-/*
-if (process.env.NODE_ENV === 'development') {
-  console.log("Connecting to local Firebase emulators...");
-  
-  // Point the SDKs to the local emulators
-  try {
-    connectAuthEmulator(auth, "http://localhost:9099");
-    connectFirestoreEmulator(db, "localhost", 8080);
-    connectStorageEmulator(storage, "localhost", 9199);
-    connectFunctionsEmulator(functions, "localhost", 5001);
-  } catch (error) {
-    console.error('Error connecting to Firebase emulators:', error);
-  }
-}
-*/
+

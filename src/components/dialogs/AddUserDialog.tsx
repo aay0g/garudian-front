@@ -48,12 +48,37 @@ export function AddUserDialog({ isOpen, onOpenChange, onUserAdded }: AddUserDial
     setIsLoading(true);
     setError(null);
 
+    // Basic validation
+    if (!formData.username || !formData.firstName || !formData.lastName || !formData.email) {
+      setError('Please fill in all required fields.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      await createNewUser(formData);
+      await createNewUser({
+        username: formData.username,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        role: formData.role
+      });
+      
+      // Reset form
+      setFormData({
+        username: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        role: 'Investigator' as UserRole,
+      });
+      
       onUserAdded();
       onOpenChange(false); // Close dialog on success
     } catch (err: any) {
-      setError(err.message || 'Failed to create user.');
+      console.error('Error creating user:', err);
+      setError(err.message || 'Failed to create user. Please try again.');
     } finally {
       setIsLoading(false);
     }

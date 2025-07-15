@@ -1,242 +1,152 @@
-import {
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  updatePassword,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-} from "firebase/auth";
-import {
-  collection,
-  query,
-  where,
-  doc,
-  getDoc,
-  getDocs,
-} from "firebase/firestore";
-import { httpsCallable, HttpsCallableResult } from 'firebase/functions';
-import { auth, db, functions } from "./firebase";
 import { 
-  Case, 
-  NewCaseData, 
-  CaseStatus, 
-  NewTimelineEvent, 
-  TimelineEvent, 
-  NewNote, 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  sendPasswordResetEmail
+} from 'firebase/auth';
+import { auth } from './firebase';
+import { CaseService, UserService, EvidenceService } from './services';
+import type {
+  Case,
+  NewCaseData,
+  CaseUpdateData,
+  TimelineEvent,
+  NewTimelineEventData,
   Note,
-  CaseEvidence
-} from '@/types/case';
-import { UserProfile, UserRole, NewUserData, AssignableUser } from "../types/user";
-
-// --- Helper Types for Callable Functions ---
-
-
-
-interface NewNoteData extends NewNote {
-  caseId: string;
-}
-
-export interface NewEvidenceData {
-  caseId: string;
-  title: string;
-  description: string;
-  evidenceType: 'file' | 'url' | 'text';
-  fileName?: string;
-  fileUrl?: string;
-  fileType?: string;
-  evidenceDate: string; // ISO string
-}
-
-// --- Callable Function Definitions ---
-
-const recordLoginCallable = httpsCallable(functions, 'recordLogin');
-const updateUserProfileCallable = httpsCallable(functions, 'updateUserProfile');
-const createCaseCallable = httpsCallable<NewCaseData, { caseId: string, caseNumber: string }>(functions, 'createCase');
-const getAllCasesCallable = httpsCallable<undefined, Case[]>(functions, 'getAllCases');
-const getCaseByIdCallable = httpsCallable<{ caseId: string }, Case>(functions, 'getCaseById');
-const assignCaseCallable = httpsCallable<{ caseId: string, assigneeId: string }, void>(functions, 'assignCase');
-const getAssignableUsersCallable = httpsCallable<undefined, AssignableUser[]>(functions, 'getAssignableUsers');
-const updateCaseStatusCallable = httpsCallable<{ caseId: string, status: 'closed' | 'archived' }, void>(functions, 'updateCaseStatus');
-const addTimelineEventCallable = httpsCallable(functions, 'addTimelineEvent');
-const getCaseTimelineCallable = httpsCallable<{ caseId: string }, TimelineEvent[]>(functions, 'getCaseTimeline');
-const getCaseNotesCallable = httpsCallable<{ caseId: string }, Note[]>(functions, 'getCaseNotes');
-const addNoteToCaseCallable = httpsCallable<NewNoteData, { noteId: string }>(functions, 'addNoteToCase');
-const searchCasesCallable = httpsCallable<{ caseNumber: string }, Partial<Case>[]>(functions, 'searchCases');
-const createNewUserCallable = httpsCallable<NewUserData, any>(functions, 'createNewUser');
-const getAllUsersCallable = httpsCallable<undefined, any[]>(functions, 'getAllUsers');
-
-// Evidence Functions
-const getEvidenceForCaseCallable = httpsCallable<{ caseId: string }, CaseEvidence[]>(functions, 'getEvidenceForCase');
-const addEvidenceToCaseCallable = httpsCallable<NewEvidenceData, { evidenceId: string }>(functions, 'addEvidenceToCase');
-const deleteCaseEvidenceCallable = httpsCallable<{ caseId: string, evidenceId: string }, void>(functions, 'deleteCaseEvidence');
-
+  NewNoteData,
+  Evidence,
+  NewEvidenceData,
+} from '../types/case';
+import type { UserProfile, UserRole, NewUserData, AssignableUser, ProfileUpdateData } from '../types/user';
 
 // --- Authentication ---
-
 export const signIn = (email: string, password: string) => {
   return signInWithEmailAndPassword(auth, email, password);
-};
-
-export const handleRecordLogin = async () => {
-  try {
-    await recordLoginCallable();
-  } catch (error) {
-    console.error("Could not record login time:", error);
-  }
 };
 
 export const signOut = () => {
   return firebaseSignOut(auth);
 };
 
+// Email Link Authentication
+export const sendEmailSignInLink = async (email: string) => {
+  const actionCodeSettings = {
+    url: `${window.location.origin}/login/verify`,
+    handleCodeInApp: true,
+  };
+  
+  await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+  // Save email to localStorage for verification
+  window.localStorage.setItem('emailForSignIn', email);
+};
+
+export const verifyEmailSignInLink = async (email: string, emailLink: string) => {
+  return signInWithEmailLink(auth, email, emailLink);
+};
+
+export const checkIsSignInWithEmailLink = (url: string) => {
+  return isSignInWithEmailLink(auth, url);
+};
+
+// Password Reset
+export const sendPasswordReset = async (email: string) => {
+  const actionCodeSettings = {
+    url: `${window.location.origin}/login`,
+    handleCodeInApp: false,
+  };
+  
+  return sendPasswordResetEmail(auth, email, actionCodeSettings);
+};
+
 // --- User Management ---
-
-export interface ProfileUpdateData {
-  firstName?: string;
-  lastName?: string;
-  phoneNumber?: string;
-  department?: string;
-}
-
-export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
-  try {
-    const userDocRef = doc(db, 'users', uid);
-    const userDoc = await getDoc(userDocRef);
-    return userDoc.exists() ? { id: userDoc.id, ...userDoc.data() } as UserProfile : null;
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    throw error;
-  }
+export const getUserProfile = (uid: string): Promise<UserProfile | null> => {
+  return UserService.getUserProfile(uid);
 };
 
-export const getUserRole = async (uid: string): Promise<UserRole | null> => {
-  const userDocRef = doc(db, "users", uid);
-  const userDoc = await getDoc(userDocRef);
-  return userDoc.exists() ? userDoc.data().role as UserRole : null;
+export const getUsersByRole = (roles: UserRole[]): Promise<UserProfile[]> => {
+  return UserService.getUsersByRole(roles);
 };
 
-export const getUsersByRole = async (roles: UserRole[]): Promise<UserProfile[]> => {
-  const q = query(collection(db, "users"), where("role", "in", roles));
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as UserProfile));
+export const handleUpdateProfile = (uid: string, profileData: Partial<ProfileUpdateData>): Promise<void> => {
+  return UserService.updateUserProfile(uid, profileData);
 };
 
-export const handleUpdateProfile = async (profileData: ProfileUpdateData) => {
-  try {
-    const result = await updateUserProfileCallable(profileData);
-    return result.data;
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    throw error;
-  }
+export const handleRecordLogin = (uid: string): Promise<void> => {
+  return UserService.recordLogin(uid);
+};
+
+export const reauthenticateAndChangePassword = (currentPassword: string, newPassword: string): Promise<void> => {
+  return UserService.reauthenticateAndChangePassword(currentPassword, newPassword);
+};
+
+// --- User Management (Admin) ---
+export const getAllUsers = (): Promise<UserProfile[]> => {
+  return UserService.getAllUsers();
+};
+
+export const createNewUser = (userData: NewUserData): Promise<string> => {
+  return UserService.createNewUser(userData);
+};
+
+export const handleGetAssignableUsers = (): Promise<AssignableUser[]> => {
+  return UserService.getAssignableUsers();
 };
 
 // --- Case Management ---
-
-export async function handleCreateCase(caseDetails: NewCaseData): Promise<{ caseId: string, caseNumber: string }> {
-  const result = await createCaseCallable(caseDetails);
-  return result.data;
-}
-
-export const fetchAllCases = async (): Promise<Case[]> => {
-  const result = await getAllCasesCallable();
-  return result.data || [];
+export const handleCreateCase = (caseDetails: NewCaseData, createdBy: string): Promise<{ caseId: string; caseNumber: string }> => {
+  return CaseService.createCase(caseDetails, createdBy);
 };
 
-export const handleGetAssignableUsers = async (): Promise<AssignableUser[]> => {
-  const result = await getAssignableUsersCallable();
-  return result.data;
+export const fetchAllCases = (): Promise<Case[]> => {
+  return CaseService.getAllCases();
 };
 
-export const handleAssignCase = async (caseId: string, assigneeId: string) => {
-  await assignCaseCallable({ caseId, assigneeId });
+export const getCaseById = (caseId: string): Promise<Case | null> => {
+  return CaseService.getCaseById(caseId);
 };
 
-export const handleUpdateCaseStatus = async (caseId: string, status: 'closed' | 'archived') => {
-  await updateCaseStatusCallable({ caseId, status });
+export const updateCase = (caseId: string, updateData: CaseUpdateData): Promise<void> => {
+  return CaseService.updateCase(caseId, updateData);
 };
 
-export const getCaseById = async (caseId: string): Promise<Case> => {
-  const result = await getCaseByIdCallable({ caseId });
-  if (!result.data) throw new Error("Case not found");
-  return result.data;
+export const deleteCase = (caseId: string): Promise<void> => {
+  return CaseService.deleteCase(caseId);
 };
 
-export const handleAddTimelineEvent = async (caseId: string, eventData: NewTimelineEvent) => {
-  const result = await addTimelineEventCallable({ caseId, ...eventData });
-  return result.data;
+// --- Note Methods ---
+export const getNotesForCase = (caseId: string): Promise<Note[]> => {
+  return CaseService.getNotesForCase(caseId);
 };
 
-export const getCaseTimeline = async (caseId: string): Promise<TimelineEvent[]> => {
-  const result = await getCaseTimelineCallable({ caseId });
-  return result.data || [];
+export const addNoteToCase = (caseId: string, noteData: NewNoteData, addedByUserId: string): Promise<string> => {
+  return CaseService.addNoteToCase(caseId, noteData, addedByUserId);
 };
 
-export const getCaseNotes = async (caseId: string): Promise<Note[]> => {
-  try {
-    const result = await getCaseNotesCallable({ caseId });
-    return result.data || [];
-  } catch (error) {
-    console.error(`Error fetching notes for case ${caseId}:`, error);
-    throw error; // Re-throw the error to be caught by the UI
-  }
+// --- Timeline Methods ---
+export const getTimelineForCase = (caseId: string): Promise<TimelineEvent[]> => {
+  return CaseService.getTimelineForCase(caseId);
 };
 
-export async function addNoteToCase(caseId: string, noteData: NewNote): Promise<string> {
-  const result = await addNoteToCaseCallable({ caseId, ...noteData });
-  return result.data.noteId;
-}
-
-export const searchCases = async (caseNumber: string): Promise<Partial<Case>[]> => {
-  if (!caseNumber.trim()) return [];
-  const result = await searchCasesCallable({ caseNumber });
-  return result.data || [];
+export const addTimelineEventToCase = (caseId: string, eventData: NewTimelineEventData, addedByUserId: string): Promise<string> => {
+  return CaseService.addTimelineEventToCase(caseId, eventData, addedByUserId);
 };
 
-// --- Evidence API ---
-
-export async function getEvidenceForCase(caseId: string): Promise<CaseEvidence[]> {
-  try {
-    const result = await getEvidenceForCaseCallable({ caseId });
-    return result.data || [];
-  } catch (error) {
-    console.error(`Error fetching evidence for case ${caseId}:`, error);
-    throw error; // Re-throw the error to be caught by the UI
-  }
-}
-
-export async function addEvidenceToCase(evidenceData: NewEvidenceData): Promise<string> {
-  const result = await addEvidenceToCaseCallable(evidenceData);
-  return result.data.evidenceId;
-}
-
-export async function deleteCaseEvidence(caseId: string, evidenceId: string): Promise<void> {
-  await deleteCaseEvidenceCallable({ caseId, evidenceId });
-}
-
-// --- User Management (Super Admin) ---
-
-export const createNewUser = async (userData: NewUserData): Promise<any> => {
-  const result = await createNewUserCallable(userData);
-  return result.data;
+// --- Evidence Methods ---
+export const getEvidenceForCase = (caseId: string): Promise<Evidence[]> => {
+  return EvidenceService.getEvidenceForCase(caseId);
 };
 
-export const getAllUsers = async (): Promise<any[]> => {
-  const result = await getAllUsersCallable();
-  return result.data || [];
+export const addEvidenceToCase = (
+  caseId: string,
+  evidenceData: Omit<NewEvidenceData, 'caseId' | 'fileUrl' | 'fileName'>,
+  file: File,
+  addedBy: string
+): Promise<string> => {
+  return EvidenceService.addEvidenceToCase(caseId, evidenceData, file, addedBy);
 };
 
-// --- Password Management ---
-
-export const reauthenticateAndChangePassword = async (currentPassword: string, newPassword: string) => {
-  const user = auth.currentUser;
-  if (!user || !user.email) throw new Error("User not authenticated.");
-
-  const credential = EmailAuthProvider.credential(user.email, currentPassword);
-  await reauthenticateWithCredential(user, credential);
-  await updatePassword(user, newPassword);
+export const deleteEvidence = (caseId: string, evidenceId: string): Promise<void> => {
+  return EvidenceService.deleteEvidence(caseId, evidenceId);
 };
-
-// --- Misc Callable Functions ---
-
-export const assignCase = httpsCallable(functions, "assignCase");
-export const generateCaseReport = httpsCallable(functions, "generateCaseReport");
