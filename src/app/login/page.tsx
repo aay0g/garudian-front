@@ -23,15 +23,6 @@ export default function LoginPage() {
   const { login, sendEmailLink, isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Handle hydration
-  useEffect(() => {
-    // Remove any server-side rendered overlay containers
-    const overlayContainers = document.querySelectorAll('[data-overlay-container]');
-    overlayContainers.forEach(container => {
-      container.removeAttribute('data-overlay-container');
-    });
-  }, []);
-
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -109,7 +100,7 @@ export default function LoginPage() {
         <CardHeader>
           <div className="flex justify-center mb-4">
             <Image 
-              src="/Logo_cybermitra.svg" 
+              src="/Logo_Cybermitra.svg" 
               alt="CyberMitra Logo" 
               width={64} 
               height={64}

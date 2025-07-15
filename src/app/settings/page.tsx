@@ -15,6 +15,7 @@ import { User, Lock, Mail, Phone, Building, Calendar } from "lucide-react";
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -27,6 +28,21 @@ export default function SettingsPage() {
     phone: "",
     department: "",
   });
+
+  // Safe date formatter to prevent hydration issues
+  const formatDate = (timestamp: any): string => {
+    if (!isMounted || !timestamp) return 'N/A';
+    try {
+      return timestamp.toDate().toLocaleDateString();
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  // Set mounted state to prevent hydration issues
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -52,7 +68,7 @@ export default function SettingsPage() {
         phoneNumber: profileForm.phone,
         department: profileForm.department,
       };
-      await handleUpdateProfile(user.id, profileData);
+      await handleUpdateProfile(user.uid, profileData);
       await refreshUser();
       toast.success("Profile updated successfully!");
     } catch (error) {
@@ -316,13 +332,13 @@ export default function SettingsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Account Created</p>
                 <p className="font-medium">
-                  {user.createdAt?.toDate().toLocaleDateString() || 'N/A'}
+                  {formatDate(user.createdAt)}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Last Updated</p>
                 <p className="font-medium">
-                  {user.updatedAt?.toDate().toLocaleDateString() || 'N/A'}
+                  {formatDate(user.updatedAt)}
                 </p>
               </div>
             </div>

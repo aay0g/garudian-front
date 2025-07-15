@@ -39,6 +39,7 @@ const CaseDetailPage = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const [isTimelineDialogOpen, setIsTimelineDialogOpen] = useState(false);
   const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false);
   const [isAddEvidenceDialogOpen, setIsAddEvidenceDialogOpen] = useState(false);
@@ -83,6 +84,21 @@ const CaseDetailPage = () => {
 
   const [newTimelineEventForm, setNewTimelineEventForm] = useState<NewTimelineEventData>(INITIAL_TIMELINE_EVENT);
   const [newNoteForm, setNewNoteForm] = useState<NewNoteData>(INITIAL_NOTE);
+
+  // Safe date formatter to prevent hydration issues
+  const formatDate = (timestamp: Timestamp): string => {
+    if (!isMounted) return '';
+    try {
+      return timestamp.toDate().toLocaleString();
+    } catch {
+      return 'Invalid date';
+    }
+  };
+
+  // Set mounted state to prevent hydration issues
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!caseId) return;
@@ -242,8 +258,8 @@ const CaseDetailPage = () => {
                   <TableBody>
                     {renderDetailRow("Status", <Badge variant={caseDetails.status === 'closed' ? 'secondary' : 'default'}>{caseDetails.status}</Badge>)}
                     {renderDetailRow("Priority", <Badge variant={getPriorityBadgeVariant(caseDetails.priority)}>{caseDetails.priority}</Badge>)}
-                    {renderDetailRow("Date Opened", caseDetails.dateOpened.toDate().toLocaleDateString())}
-                    {caseDetails.dateClosed && renderDetailRow("Date Closed", caseDetails.dateClosed.toDate().toLocaleDateString())}
+                    {renderDetailRow("Date Opened", formatDate(caseDetails.dateOpened))}
+                    {caseDetails.dateClosed && renderDetailRow("Date Closed", formatDate(caseDetails.dateClosed))}
                     {renderDetailRow("Assigned To", caseDetails.assignedTo?.path ?? 'Unassigned')}
                     {renderDetailRow("Created By", caseDetails.createdBy.path)}
                   </TableBody>
@@ -321,7 +337,7 @@ const CaseDetailPage = () => {
               <div key={event.id} className="mb-4 pb-4 border-b last:border-b-0">
                 <p className="font-semibold">{event.title}</p>
                 <p className="text-sm text-muted-foreground">{event.description}</p>
-                <p className="text-xs text-muted-foreground mt-1">{event.eventDate.toDate().toLocaleString()} - {event.eventType} - by {event.addedBy.path}</p>
+                <p className="text-xs text-muted-foreground mt-1">{formatDate(event.eventDate)} - {event.eventType} - by {event.addedBy.path}</p>
               </div>
             ))}
           </CardContent>
@@ -363,7 +379,7 @@ const CaseDetailPage = () => {
             {notes.map(note => (
               <div key={note.id} className="mb-4 p-3 bg-muted/50 rounded-lg">
                 <p>{note.content}</p>
-                <p className="text-xs text-muted-foreground mt-2">{note.createdAt.toDate().toLocaleString()} - by {note.addedBy.path} - {note.noteType} {note.isPrivate ? '(Private)' : ''}</p>
+                <p className="text-xs text-muted-foreground mt-2">{formatDate(note.createdAt)} - by {note.addedBy.path} - {note.noteType} {note.isPrivate ? '(Private)' : ''}</p>
               </div>
             ))}
           </CardContent>

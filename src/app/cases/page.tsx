@@ -43,8 +43,24 @@ export default function CasesPage() {
   const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
   const [allCases, setAllCases] = useState<Case[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   const [newCaseForm, setNewCaseForm] = useState<NewCaseData>(INITIAL_NEW_CASE_STATE);
+
+  // Safe date formatter to prevent hydration issues
+  const formatDate = (timestamp: any): string => {
+    if (!isMounted || !timestamp) return 'N/A';
+    try {
+      return timestamp.toDate().toLocaleDateString();
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  // Set mounted state to prevent hydration issues
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const fetchCases = async () => {
     setIsLoading(true);
@@ -359,7 +375,7 @@ export default function CasesPage() {
                       <TableCell>{c.caseNumber ?? 'N/A'}</TableCell>
                       <TableCell>{c.caseType ?? 'N/A'}</TableCell>
                       <TableCell>{c.assignedTo?.path ?? 'Unassigned'}</TableCell>
-                      <TableCell>{date ? date.toDate().toLocaleDateString() : 'N/A'}</TableCell>
+                      <TableCell>{formatDate(date)}</TableCell>
                       <TableCell className="space-x-2">
                         {user && ['Super Admin', 'Senior Investigator'].includes(user.role) && (
                           <>

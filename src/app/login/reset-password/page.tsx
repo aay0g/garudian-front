@@ -124,7 +124,7 @@ export default function ResetPasswordPage() {
         <CardHeader>
           <div className="flex justify-center mb-4">
             <Image 
-              src="/Logo_cybermitra.svg" 
+              src="/Logo_Cybermitra.svg" 
               alt="CyberMitra Logo" 
               width={64} 
               height={64}

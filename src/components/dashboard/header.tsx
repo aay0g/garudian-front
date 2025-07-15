@@ -100,7 +100,7 @@ export function Header() {
               className="group flex items-center gap-3 font-semibold"
             >
               <Image 
-                src="/Logo_cybermitra.svg" 
+                src="/Logo_Cybermitra.svg" 
                 alt="CyberMitra Logo" 
                 width={32} 
                 height={32}

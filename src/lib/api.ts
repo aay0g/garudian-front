@@ -21,8 +21,8 @@ import type {
 } from '../types/case';
 import type { UserProfile, UserRole, NewUserData, AssignableUser, ProfileUpdateData } from '../types/user';
 
-// Re-export ProfileUpdateData type
-export type { ProfileUpdateData };
+// Re-export types for external use
+export type { ProfileUpdateData } from '../types/user';
 
 // --- Authentication ---
 export const signIn = (email: string, password: string) => {

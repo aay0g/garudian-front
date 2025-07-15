@@ -78,7 +78,7 @@ export function Sidebar() {
         <div className="flex h-14 items-center border-b px-4 lg:px-6">
           <Link href="/" className="flex items-center gap-3 font-semibold">
             <Image 
-              src="/Logo_cybermitra.svg" 
+              src="/Logo_Cybermitra.svg" 
               alt="CyberMitra Logo" 
               width={32} 
               height={32}

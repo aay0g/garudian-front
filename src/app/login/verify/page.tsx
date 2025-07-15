@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Mail, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 
-export default function VerifyEmailPage() {
+function VerifyEmailPageContent() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
@@ -111,7 +111,7 @@ export default function VerifyEmailPage() {
         <CardHeader>
           <div className="flex justify-center mb-4">
             <Image 
-              src="/Logo_cybermitra.svg" 
+              src="/Logo_Cybermitra.svg" 
               alt="CyberMitra Logo" 
               width={64} 
               height={64}
@@ -161,5 +161,33 @@ export default function VerifyEmailPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+// Loading component for Suspense fallback
+function VerifyEmailLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Card className="mx-auto max-w-sm">
+        <CardHeader>
+          <div className="flex justify-center mb-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+          <CardTitle className="text-2xl text-center">Loading...</CardTitle>
+          <CardDescription className="text-center">
+            Preparing email verification...
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    </div>
+  );
+}
+
+// Main export wrapped in Suspense
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={<VerifyEmailLoading />}>
+      <VerifyEmailPageContent />
+    </Suspense>
   );
 }
