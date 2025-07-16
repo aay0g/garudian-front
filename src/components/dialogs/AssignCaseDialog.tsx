@@ -35,12 +35,23 @@ export function AssignCaseDialog({ isOpen, onOpenChange, caseId, assignableUsers
     }
     setIsLoading(true);
     try {
-            await updateCase(caseId, { 
-        assignedTo: doc(db, 'users', selectedAssignee)
-      });
+      console.log('Assigning case:', caseId, 'to user:', selectedAssignee);
+      // When assigning a case, update both assignedTo and status
+      const updateData = { 
+        assignedTo: doc(db, 'users', selectedAssignee),
+        status: 'active' as const // Change status from unverified to active
+      };
+      console.log('Update data:', updateData);
+      
+      await updateCase(caseId, updateData);
+      console.log('Case assignment successful');
+      
+      toast.success('Case assigned successfully!');
       onCaseAssigned();
       onOpenChange(false);
+      setSelectedAssignee(null); // Reset selection
     } catch (error) {
+      console.error('Failed to assign case:', error);
       toast.error('Failed to assign case. Please try again.');
     } finally {
       setIsLoading(false);
