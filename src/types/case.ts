@@ -37,6 +37,8 @@ export interface Case {
   metadata?: Record<string, any>;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  fullyRecovered?: boolean;
+  amountRecovered?: number;
 }
 
 // --- Subcollection Interfaces ---
@@ -127,4 +129,6 @@ export interface CaseUpdateData {
   priority?: CasePriority;
   caseType?: CaseType;
   assignedTo?: DocumentReference | null;
+  fullyRecovered?: boolean;
+  amountRecovered?: number;
 }

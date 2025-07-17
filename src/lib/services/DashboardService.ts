@@ -55,7 +55,9 @@ export class DashboardService {
         active: cases.filter(c => c.status === 'active').length,
         closed: cases.filter(c => c.status === 'closed').length,
         unverified: cases.filter(c => c.status === 'unverified').length,
-        totalRecovered: cases.reduce((sum, c) => sum + (c.amountInvolved || 0), 0)
+        totalRecovered: cases
+          .filter(c => c.status === 'closed')
+          .reduce((sum, c) => sum + (c.amountRecovered || 0), 0)
       };
 
       // Get recent cases (last 5 active/unverified cases)

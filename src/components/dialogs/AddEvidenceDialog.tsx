@@ -22,66 +22,78 @@ interface AddEvidenceDialogProps {
   onEvidenceAdded: () => void;
 }
 
-const INITIAL_STATE = {
-  title: '',
-  description: '',
-};
+interface EvidenceFormData {
+  file: File;
+  title: string;
+  description: string;
+}
 
 export const AddEvidenceDialog = ({ caseId, isOpen, onOpenChange, onEvidenceAdded }: AddEvidenceDialogProps) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState(INITIAL_STATE);
-  const [file, setFile] = useState<File | null>(null);
+  const [evidenceForms, setEvidenceForms] = useState<EvidenceFormData[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      const newEvidenceForms = selectedFiles.map(file => ({
+        file,
+        title: file.name, // Pre-fill title with filename
+        description: '',
+      }));
+      setEvidenceForms(newEvidenceForms);
     }
   };
 
+  const handleInputChange = (index: number, field: 'title' | 'description', value: string) => {
+    const updatedForms = [...evidenceForms];
+    updatedForms[index][field] = value;
+    setEvidenceForms(updatedForms);
+  };
+
   const handleSubmit = async () => {
-    if (!file || !formData.title || !user) {
-      toast.error('Please fill in all required fields and select a file.');
+    if (evidenceForms.length === 0 || !user) {
+      toast.error('Please select at least one file.');
       return;
     }
 
+    // Validate all forms
+    for (const form of evidenceForms) {
+      if (!form.title) {
+        toast.error(`Please provide a title for the file: ${form.file.name}`);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
-    const toastId = toast.loading('Uploading evidence file...');
+    const toastId = toast.loading(`Uploading ${evidenceForms.length} evidence file(s)...`);
 
     try {
-      console.log('Starting evidence upload:', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        caseId,
-        userId: user.uid
+      const uploadPromises = evidenceForms.map(form => {
+        const evidenceData: Omit<NewEvidenceData, 'caseId' | 'fileUrl' | 'fileName'> = {
+          title: form.title,
+          description: form.description,
+          evidenceType: 'file',
+          evidenceDate: Timestamp.now(),
+        };
+        return addEvidenceToCase(caseId, evidenceData, form.file, user.uid);
       });
 
-      // Create evidence data (without file URL - the service will handle file upload)
-      const evidenceData: Omit<NewEvidenceData, 'caseId' | 'fileUrl' | 'fileName'> = {
-        title: formData.title,
-        description: formData.description,
-        evidenceType: 'file',
-        evidenceDate: Timestamp.now(), // Use current timestamp
-      };
+      await Promise.all(uploadPromises);
 
-      // Call the API with correct signature: (caseId, evidenceData, file, addedBy)
-      await addEvidenceToCase(caseId, evidenceData, file, user.uid);
-
-      toast.success('Evidence added successfully!', { id: toastId });
-      onEvidenceAdded(); // Refresh the evidence list
+      toast.success(`${evidenceForms.length} evidence file(s) added successfully!`, { id: toastId });
+      onEvidenceAdded();
       handleClose();
     } catch (error) {
       console.error('Error adding evidence:', error);
-      toast.error('Failed to add evidence. Please try again.', { id: toastId });
+      toast.error('Failed to add one or more evidence files. Please try again.', { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
-    setFormData(INITIAL_STATE);
-    setFile(null);
+    setEvidenceForms([]);
     onOpenChange(false);
   };
 
@@ -96,27 +108,33 @@ export const AddEvidenceDialog = ({ caseId, isOpen, onOpenChange, onEvidenceAdde
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="e.g., Suspicious Transaction Screenshot"
-            />
+            <Label htmlFor="file">Evidence File(s)</Label>
+            <Input id="file" type="file" onChange={handleFileChange} multiple />
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="A brief description of the evidence."
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="file">Evidence File</Label>
-            <Input id="file" type="file" onChange={handleFileChange} />
-          </div>
+
+          {evidenceForms.map((form, index) => (
+            <div key={index} className="p-4 border rounded-md space-y-4 bg-secondary/50">
+              <h4 className="font-semibold text-sm">{form.file.name}</h4>
+              <div className="grid gap-2">
+                <Label htmlFor={`title-${index}`}>Title</Label>
+                <Input
+                  id={`title-${index}`}
+                  value={form.title}
+                  onChange={(e) => handleInputChange(index, 'title', e.target.value)}
+                  placeholder="e.g., Suspicious Transaction Screenshot"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`description-${index}`}>Description</Label>
+                <Textarea
+                  id={`description-${index}`}
+                  value={form.description}
+                  onChange={(e) => handleInputChange(index, 'description', e.target.value)}
+                  placeholder="A brief description of the evidence."
+                />
+              </div>
+            </div>
+          ))}
         </div>
         <DialogFooter>
           <DialogClose asChild>

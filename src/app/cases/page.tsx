@@ -8,6 +8,7 @@ import { handleCreateCase, fetchAllCases, handleGetAssignableUsers, updateCase }
 import { Case, NewCaseData, CaseStatus, Victim } from '@/types/case';
 import { AssignableUser } from '@/types/user';
 import { AssignCaseDialog } from '@/components/dialogs/AssignCaseDialog';
+import { CloseCaseDialog } from '@/components/dialogs/CloseCaseDialog';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,9 @@ export default function CasesPage() {
   const [activeTab, setActiveTab] = useState<CaseStatus>("unverified");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
-  const [selectedCase, setSelectedCase] = useState<Case | null>(null);
+  const [isCloseCaseDialogOpen, setIsCloseCaseDialogOpen] = useState(false);
+  const [selectedCase, setSelectedCase] = useState<Case | null>(null); // For assigning
+  const [caseToClose, setCaseToClose] = useState<Case | null>(null); // For closing
   const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
   const [allCases, setAllCases] = useState<Case[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -150,7 +153,37 @@ export default function CasesPage() {
     }
   };
 
-  const handleUpdateStatus = async (caseId: string, status: 'closed' | 'archived') => {
+  const handleOpenCloseDialog = (caseToClose: Case) => {
+  setCaseToClose(caseToClose);
+  setIsCloseCaseDialogOpen(true);
+};
+
+const handleCloseCase = async (recoveryDetails: { fullyRecovered: boolean; amountRecovered?: number }) => {
+  if (!caseToClose) return;
+
+  const updateData: any = {
+    status: 'closed',
+    fullyRecovered: recoveryDetails.fullyRecovered,
+  };
+
+  if (recoveryDetails.fullyRecovered) {
+    updateData.amountRecovered = caseToClose.amountInvolved || 0;
+  } else {
+    updateData.amountRecovered = recoveryDetails.amountRecovered || 0;
+  }
+
+  try {
+    await updateCase(caseToClose.id, updateData);
+    toast.success('Case has been closed.');
+    fetchCases(); // Refresh list
+    setIsCloseCaseDialogOpen(false); // Close dialog
+  } catch (error) {
+    toast.error('Failed to close the case.');
+    console.error(error);
+  }
+};
+
+const handleUpdateStatus = async (caseId: string, status: 'archived') => {
     try {
       await updateCase(caseId, { status });
       toast.success(`Case status updated to ${status}.`);
@@ -384,7 +417,7 @@ export default function CasesPage() {
                             )}
                             {(c as Case).status === 'active' && (
                               <>
-                                <Button variant="destructive" size="sm" onClick={() => handleUpdateStatus(c.id!, 'closed')}>Close</Button>
+                                <Button variant="destructive" size="sm" onClick={() => handleOpenCloseDialog(c as Case)}>Close</Button>
                                 <Button variant="secondary" size="sm" onClick={() => handleUpdateStatus(c.id!, 'archived')}>Archive</Button>
                               </>
                             )}
@@ -416,6 +449,12 @@ export default function CasesPage() {
           }}
         />
       )}
+
+      <CloseCaseDialog
+        isOpen={isCloseCaseDialogOpen}
+        onOpenChange={setIsCloseCaseDialogOpen}
+        onCaseClose={handleCloseCase}
+      />
     </DashboardLayout>
   );
 }

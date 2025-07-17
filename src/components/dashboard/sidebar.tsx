@@ -13,6 +13,7 @@ import {
   Settings,
   AlertTriangle,
   Users,
+  Database,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -53,6 +54,12 @@ export function Sidebar() {
       href: "/reports",
       icon: FileText,
       label: "Reports",
+      badge: null
+    },
+    {
+      href: "/databases",
+      icon: Database,
+      label: "Databases",
       badge: null
     },
     {

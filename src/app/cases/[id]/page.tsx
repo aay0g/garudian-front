@@ -86,6 +86,11 @@ const CaseDetailPage = () => {
   const [newNoteForm, setNewNoteForm] = useState<NewNoteData>(INITIAL_NOTE);
 
   // Safe date formatter to prevent hydration issues
+  const formatCurrency = (amount: number | undefined, currency: string | undefined) => {
+    if (amount === undefined || amount === null) return 'N/A';
+    return `${currency || ''} ${amount.toLocaleString()}`;
+  };
+
   const formatDate = (timestamp: Timestamp): string => {
     if (!isMounted) return '';
     try {
@@ -261,6 +266,8 @@ const CaseDetailPage = () => {
                     {renderDetailRow("Date Opened", formatDate(caseDetails.dateOpened))}
                     {caseDetails.dateClosed && renderDetailRow("Date Closed", formatDate(caseDetails.dateClosed))}
                     {renderDetailRow("Assigned To", caseDetails.assignedTo?.path ?? 'Unassigned')}
+                    {renderDetailRow("Amount Lost", formatCurrency(caseDetails.amountInvolved, caseDetails.currency))}
+                    {caseDetails.status === 'closed' && renderDetailRow("Amount Recovered", formatCurrency(caseDetails.amountRecovered, caseDetails.currency))}
                     {renderDetailRow("Created By", caseDetails.createdBy.path)}
                   </TableBody>
                 </Table>

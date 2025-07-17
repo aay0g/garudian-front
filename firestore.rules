@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  // This matches the database, which is standard. All collection rules go inside.
+  match /databases/{database}/documents {
+
+    // --- Helper Functions ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      // This path is correct for checking a user document within the current database.
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Super Admin';
+    }
+
+    // --- Collection Rules ---
+
+    // Rule for the 'grievance-contacts' collection
+    match /grievance-contacts/{contactId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Rule for user profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isSuperAdmin());
+      allow create: if isAuthenticated() && isSuperAdmin();
+    }
+
+    // Rule for cases and their subcollections
+    match /cases/{caseId} {
+      allow read, write: if isAuthenticated();
+
+      match /evidence/{evidenceId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /timeline/{timelineId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /notes/{noteId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // Rule for victims
+    match /victims/{victimId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Rule for alerts
+    match /alerts/{alertId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Rule for test documents, useful for debugging
+    match /test/{document=**} {
+      allow read: if isAuthenticated();
+    }
+  }
+}
