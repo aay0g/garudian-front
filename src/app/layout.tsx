@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/context/AuthContext";
+import MsalClientProvider from '@/components/MsalProvider';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,9 +22,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          <MsalClientProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </MsalClientProvider>
         </Providers>
         <Toaster 
           theme="dark"
