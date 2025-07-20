@@ -91,7 +91,6 @@ const MailPage = () => {
           console.error(e);
           if (e.message.includes('No active account')) {
             setError('Your session might have expired. Please sign in again.');
-             setError('Your session might have expired. Please sign in again.');
           } else {
              setError(`Failed to fetch ${currentView}. Please check your permissions and try again.`);
           }
@@ -264,7 +263,11 @@ const MailPage = () => {
           </Button>
         </div>
       )}
-      {loading && <p>Loading emails...</p>}
+      {loading && (
+        <div className="text-center p-4">
+          <p className="text-muted-foreground">Loading emails...</p>
+        </div>
+      )}
 
       {!loading && !error && emails.length === 0 && (
         <div className="text-center p-4">

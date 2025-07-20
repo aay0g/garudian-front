@@ -11,6 +11,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Guardian - CyberMitra",
   description: "Advanced cybersecurity case management system",
+  icons: {
+    icon: '/Logo_Cybermitra.svg',
+  },
 };
 
 export default function RootLayout({

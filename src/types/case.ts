@@ -1,5 +1,16 @@
 import { Timestamp, DocumentReference } from 'firebase/firestore';
 
+export interface AgentMessage {
+  id: string;
+  text: string;
+  sender: 'user' | 'agent';
+  case: DocumentReference;
+  user: DocumentReference;
+  createdAt: Timestamp;
+}
+
+export type NewAgentMessage = Omit<AgentMessage, 'id' | 'case' | 'user' | 'createdAt'>;
+
 // --- Enums from Schema ---
 export type CaseStatus = 'unverified' | 'active' | 'closed' | 'archived';
 export type CasePriority = 'low' | 'medium' | 'high';

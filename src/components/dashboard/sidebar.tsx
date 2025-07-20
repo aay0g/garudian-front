@@ -15,6 +15,7 @@ import {
   Users,
   Database,
   Mail,
+  Bot,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -55,6 +56,12 @@ export function Sidebar() {
       href: "/mail",
       icon: Mail,
       label: "Mail",
+      badge: null
+    },
+    {
+      href: "/agents",
+      icon: Bot,
+      label: "Agents",
       badge: null
     },
     {

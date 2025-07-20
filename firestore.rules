@@ -33,6 +33,11 @@ service cloud.firestore {
     match /cases/{caseId} {
       allow read, write: if isAuthenticated();
 
+      // Agent Chats subcollection
+      match /agent_chats/{chatId} {
+        allow read, write: if isAuthenticated();
+      }
+
       match /evidence/{evidenceId} {
         allow read, write: if isAuthenticated();
       }
