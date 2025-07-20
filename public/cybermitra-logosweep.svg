@@ -1,0 +1,26 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Define the sweeping light gradient -->
+  <defs>
+    <linearGradient id="light-sweep" x1="-1" y1="0" x2="0" y2="0">
+      <stop stop-color="black" offset="0%"/>
+      <stop stop-color="white" offset="50%"/>
+      <stop stop-color="black" offset="100%"/>
+      <!-- Animate the gradient's position to create the sweep effect -->
+      <animate attributeName="x1" from="-1" to="1" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="x2" from="0" to="2" dur="2.5s" repeatCount="indefinite"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Black rounded square background -->
+  <rect width="128" height="128" rx="28" ry="28" fill="black"/>
+
+  <!-- Overlay for the light sweep effect, masked to the rounded square shape -->
+  <rect width="128" height="128" rx="28" ry="28" fill="url(#light-sweep)" opacity="0.4"/>
+
+  <!-- Your original logo, centered on top -->
+  <g transform="translate(24.5, 13)">
+    <path d="M56.0284 36.6193L54.3139 42.946H22.2699L24.0085 36.6193H56.0284ZM39.9219 74L23.0185 53.6676L22.9943 48.3068H31.3494C33.3456 48.3068 35.0118 47.9768 36.348 47.3168C37.7003 46.6406 38.7225 45.6989 39.4148 44.4915C40.1231 43.268 40.4773 41.8352 40.4773 40.1932C40.4773 37.7301 39.7528 35.75 38.304 34.2528C36.8551 32.7557 34.5369 32.0071 31.3494 32.0071H22.2699L24.1534 24.5455H31.3494C35.4063 24.5455 38.7628 25.1733 41.419 26.429C44.0914 27.6686 46.0876 29.4233 47.4077 31.6932C48.7438 33.9631 49.4119 36.6193 49.4119 39.6619C49.4119 42.3504 48.9209 44.7491 47.9389 46.858C46.9569 48.9669 45.4115 50.6974 43.3026 52.0497C41.1937 53.402 38.4328 54.3035 35.0199 54.7543L34.7301 54.8509L49.9915 73.5653V74H39.9219ZM56.0767 24.5455L54.3139 30.9688L28.331 30.8722L30.0938 24.5455H56.0767Z" fill="white"/>
+    <path d="M39.3938 2C21.359 13.6488 2.00007 13.6488 2.00007 13.6488V64.6736C5.59695 71.4229 18.6758 87.8372 39.3938 99.5" stroke="white" stroke-width="4" stroke-linecap="round"/>
+    <path d="M39.8577 2.5C57.7012 14.089 76.8549 14.089 76.8549 14.089V64.8521C73.2961 71.5668 60.356 87.897 39.8577 99.5" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  </g>
+</svg>

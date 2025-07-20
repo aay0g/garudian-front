@@ -12,6 +12,9 @@ import {
   Search,
   FileText,
   Settings,
+  Users,
+  Database,
+  Mail,
 } from "lucide-react"
 
 import {
@@ -37,7 +40,7 @@ import Image from "next/image"
 import { useAuth } from "@/context/AuthContext"
 
 export function Header() {
-  const { logout } = useAuth()
+    const { logout, user } = useAuth()
   const pathname = usePathname()
 
   const getBreadcrumbs = () => {
@@ -48,7 +51,10 @@ export function Header() {
       'cases': 'Cases',
       'alerts': 'Alerts',
       'reports': 'Reports',
-      'settings': 'Settings'
+      'settings': 'Settings',
+      'users': 'Users',
+      'databases': 'Databases',
+      'mail': 'Mail'
     }
 
     if (pathSegments.length === 0) {
@@ -80,9 +86,19 @@ export function Header() {
     { href: "/", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/cases", icon: FolderOpen, label: "Cases" },
     { href: "/alerts", icon: AlertTriangle, label: "Alerts" },
+    { href: "/mail", icon: Mail, label: "Mail" },
     { href: "/reports", icon: FileText, label: "Reports" },
+    { href: "/databases", icon: Database, label: "Databases" },
     { href: "/settings", icon: Settings, label: "Settings" }
   ]
+
+  if (user?.role === 'Super Admin') {
+    navItems.splice(4, 0, {
+      href: "/users",
+      icon: Users,
+      label: "Users",
+    });
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 md:left-[220px] lg:left-[280px] md:px-6">

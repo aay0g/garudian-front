@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Users,
   Database,
+  Mail,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -48,6 +49,12 @@ export function Sidebar() {
       href: "/alerts",
       icon: AlertTriangle,
       label: "Alerts",
+      badge: null
+    },
+    {
+      href: "/mail",
+      icon: Mail,
+      label: "Mail",
       badge: null
     },
     {

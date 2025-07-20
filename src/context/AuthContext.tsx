@@ -6,6 +6,7 @@ import { auth } from '@/lib/firebase';
 import { getUserProfile, signIn, signOut, sendEmailSignInLink, verifyEmailSignInLink, checkIsSignInWithEmailLink, sendPasswordReset } from '@/lib/api';
 import { UserProfile } from '@/types/user';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 interface AuthContextType {
   user: (User & UserProfile) | null;
@@ -161,7 +162,18 @@ export const AuthGuard = ({ children }: { children: ReactNode }) => {
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading || !isAuthenticated) {
-    return <div>Loading...</div>; 
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Image
+          src="/cybermitra-logosweep.svg"
+          alt="Loading Guardian..."
+          width={60}
+          height={60}
+          priority
+          unoptimized
+        />
+      </div>
+    );
   }
 
   return <>{children}</>;
